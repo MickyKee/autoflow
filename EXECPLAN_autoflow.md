@@ -59,13 +59,14 @@
 - Commit: `feat: scaffold autoflow project and contracts`
 
 ### Phase 1 — Backend Core (Express + SQLite + Seed)
-- Status: ⏳ In progress
+- Status: ✅ Done (2026-02-11)
 - Build Express server, DB init/migrations, seed connectors/workflows/logs/settings.
 - Implement endpoints for workflows, logs, connectors, settings, and run trigger.
 - Add SSE stream for realtime logs.
 - Commit: `feat: implement backend api sqlite persistence and realtime logs`
 
 ### Phase 2 — Execution Engine + Connector Adapters
+- Status: ⏳ In progress
 - Implement engine graph traversal, condition branching, transform, delay.
 - Implement connector modules (webhook/http/openai/email/slack/schedule mock-ready).
 - Add robust error propagation and structured step logs.

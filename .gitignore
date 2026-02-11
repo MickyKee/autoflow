@@ -6,6 +6,8 @@ coverage
 .env
 .env.local
 backend/dist
+backend/data/*.db
+backend/data/*.db-*
 *.tsbuildinfo
 tmp/*.png
 tmp/*.jpg

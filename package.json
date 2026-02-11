@@ -9,7 +9,7 @@
     "build": "pnpm build:frontend && pnpm build:backend",
     "build:frontend": "next build",
     "build:backend": "tsc -p backend/tsconfig.json",
-    "start": "concurrently -k -n FRONTEND,BACKEND -c cyan,magenta \"next start\" \"node backend/dist/index.js\"",
+    "start": "concurrently -k -n FRONTEND,BACKEND -c cyan,magenta \"next start\" \"node backend/dist/backend/src/index.js\"",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && tsc -p backend/tsconfig.json --noEmit",
     "test": "vitest",
