@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   AlarmClock,
@@ -9,7 +8,6 @@ import {
   Bot,
   Cable,
   Clock3,
-  Loader2,
   Mail,
   PlayCircle,
   Plus,
@@ -21,10 +19,9 @@ import {
 
 import { Canvas } from "@/components/Canvas";
 import { NodeConfigPanel } from "@/components/NodeConfigPanel";
-import { fetchConnectors, fetchWorkflow, runWorkflow, updateWorkflow } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { useBuilderStore } from "@/lib/store";
-import type { ConnectorDefinition } from "@/lib/types";
+import { useBuilderStore, toFlowGraph } from "@/lib/store";
+import type { ConnectorDefinition, WorkflowRecord } from "@/lib/types";
 
 const connectorIcon: Record<string, LucideIcon> = {
   webhook: Webhook,
@@ -38,12 +35,113 @@ const connectorIcon: Record<string, LucideIcon> = {
   delay: Clock3,
 };
 
+const DEMO_CONNECTORS: ConnectorDefinition[] = [
+  { key: "webhook", name: "Webhook", description: "Receive HTTP callbacks", category: "trigger", accent: "#3b82f6" },
+  { key: "schedule", name: "Schedule", description: "Run on cron schedule", category: "trigger", accent: "#3b82f6" },
+  { key: "http_request", name: "HTTP Request", description: "Make API calls", category: "action", accent: "#f97316" },
+  { key: "openai", name: "OpenAI", description: "AI text completions", category: "action", accent: "#f97316" },
+  { key: "email", name: "Email", description: "Send emails via SMTP", category: "action", accent: "#f97316" },
+  { key: "slack", name: "Slack", description: "Post to channels", category: "action", accent: "#f97316" },
+  { key: "condition", name: "Condition", description: "Branch on logic", category: "condition", accent: "#eab308" },
+  { key: "transform", name: "Transform", description: "Transform data", category: "transform", accent: "#8b5cf6" },
+  { key: "delay", name: "Delay", description: "Wait N seconds", category: "output", accent: "#6b7280" },
+];
+
+const DEMO_WORKFLOW: WorkflowRecord = {
+  id: "wf_lead_slack_crm",
+  name: "New Lead → Slack + CRM",
+  description: "Route inbound leads to the sales Slack channel and create a contact in HubSpot CRM.",
+  status: "active",
+  executionCount: 1247,
+  lastRunAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+  nodes: [
+    {
+      id: "node_trigger",
+      type: "trigger",
+      position: { x: 50, y: 200 },
+      data: {
+        label: "Lead Webhook",
+        description: "Receives new lead payload from marketing site",
+        connector: "webhook",
+        category: "trigger",
+        config: { endpoint: "/api/webhooks/wf_lead", secretHeader: "x-autoflow-signature" },
+      },
+    },
+    {
+      id: "node_transform",
+      type: "transform",
+      position: { x: 340, y: 200 },
+      data: {
+        label: "Enrich Lead Data",
+        description: "Normalize fields and compute lead score",
+        connector: "transform",
+        category: "transform",
+        config: { expression: "({ ...data, score: data.revenue > 10000 ? 80 : 30 })" },
+      },
+    },
+    {
+      id: "node_condition",
+      type: "condition",
+      position: { x: 640, y: 200 },
+      data: {
+        label: "Score Check",
+        description: "Route high-value leads to sales",
+        connector: "condition",
+        category: "condition",
+        config: { path: "score", operator: "gte", value: 50 },
+      },
+    },
+    {
+      id: "node_slack",
+      type: "action",
+      position: { x: 960, y: 80 },
+      data: {
+        label: "Notify Sales Team",
+        description: "Post qualified lead to #sales-leads",
+        connector: "slack",
+        category: "action",
+        config: { channel: "#sales-leads", template: "New qualified lead: {{name}} ({{company}})" },
+      },
+    },
+    {
+      id: "node_crm",
+      type: "action",
+      position: { x: 960, y: 280 },
+      data: {
+        label: "Update CRM",
+        description: "Create or update contact in HubSpot",
+        connector: "http_request",
+        category: "action",
+        config: { method: "POST", url: "https://api.hubspot.com/contacts", timeoutMs: 8000 },
+      },
+    },
+    {
+      id: "node_email",
+      type: "action",
+      position: { x: 960, y: 460 },
+      data: {
+        label: "Send Follow-up",
+        description: "Email nurture sequence for low-score leads",
+        connector: "email",
+        category: "action",
+        config: { to: "{{email}}", subject: "Thanks for your interest", body: "Hi {{name}}, thanks for reaching out..." },
+      },
+    },
+  ],
+  edges: [
+    { id: "e_1", source: "node_trigger", target: "node_transform" },
+    { id: "e_2", source: "node_transform", target: "node_condition" },
+    { id: "e_3", source: "node_condition", target: "node_slack", sourceHandle: "true" },
+    { id: "e_4", source: "node_condition", target: "node_crm", sourceHandle: "true" },
+    { id: "e_5", source: "node_condition", target: "node_email", sourceHandle: "false" },
+  ],
+  createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+  updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+};
+
 const categoryOrder = ["trigger", "action", "condition", "transform", "output"] as const;
 
 export default function BuilderPage() {
-  const params = useParams<{ id: string | string[] }>();
-  const workflowId = Array.isArray(params.id) ? params.id[0] : params.id;
-
   const {
     workflowName,
     workflowDescription,
@@ -61,41 +159,13 @@ export default function BuilderPage() {
     updateNodeBasics,
     updateNodeConfig,
     removeNode,
-    serializeGraph,
-    markSaved,
   } = useBuilderStore();
 
-  const [connectors, setConnectors] = useState<ConnectorDefinition[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!workflowId) {
-      setLoading(false);
-      setError("Invalid workflow id.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    void Promise.all([fetchWorkflow(workflowId), fetchConnectors()])
-      .then(([workflowResponse, connectorsResponse]) => {
-        initialize(workflowResponse.workflow);
-        setConnectors(connectorsResponse.connectors);
-        setNotice(null);
-      })
-      .catch((requestError: unknown) => {
-        setError(requestError instanceof Error ? requestError.message : "Failed to load workflow builder.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [initialize, workflowId]);
+    initialize(DEMO_WORKFLOW);
+  }, [initialize]);
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -104,157 +174,79 @@ export default function BuilderPage() {
 
   const connectorGroups = useMemo(() => {
     const grouped = new Map<string, ConnectorDefinition[]>();
-
-    for (const connector of connectors) {
+    for (const connector of DEMO_CONNECTORS) {
       const current = grouped.get(connector.category) ?? [];
       current.push(connector);
       grouped.set(connector.category, current);
     }
-
     return categoryOrder
-      .map((category) => ({
-        category,
-        items: grouped.get(category) ?? [],
-      }))
+      .map((category) => ({ category, items: grouped.get(category) ?? [] }))
       .filter((group) => group.items.length > 0);
-  }, [connectors]);
-
-  async function handleSave() {
-    if (!workflowId) {
-      return;
-    }
-
-    if (workflowName.trim().length < 3) {
-      setError("Workflow name must contain at least 3 characters.");
-      return;
-    }
-
-    if (workflowDescription.trim().length < 8) {
-      setError("Workflow description must contain at least 8 characters.");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const graph = serializeGraph();
-      const response = await updateWorkflow(workflowId, {
-        name: workflowName.trim(),
-        description: workflowDescription.trim(),
-        nodes: graph.nodes,
-        edges: graph.edges,
-      });
-
-      initialize(response.workflow);
-      markSaved();
-      const now = new Date().toISOString();
-      setLastSavedAt(now);
-      setNotice(`Workflow saved at ${new Date(now).toLocaleTimeString()}.`);
-    } catch (requestError: unknown) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to save workflow.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleRun() {
-    if (!workflowId) {
-      return;
-    }
-
-    setRunning(true);
-    setError(null);
-
-    try {
-      const response = await runWorkflow(workflowId, {
-        triggerType: "manual",
-        payload: {
-          source: "builder-ui",
-          timestamp: new Date().toISOString(),
-        },
-      });
-      setNotice(
-        `Run ${response.run.id} finished with status "${response.run.status}" in ${response.run.durationMs}ms.`,
-      );
-    } catch (requestError: unknown) {
-      setError(requestError instanceof Error ? requestError.message : "Workflow execution failed.");
-    } finally {
-      setRunning(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="card flex min-h-[500px] items-center justify-center gap-3 p-10 text-sm text-[var(--text-muted)]">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Loading workflow canvas...
-      </div>
-    );
-  }
-
-  if (error && nodes.length === 0) {
-    return (
-      <div className="card min-h-[300px] space-y-2 p-8">
-        <p className="hero-kicker">Builder Error</p>
-        <p className="text-sm text-[oklch(0.8_0.15_32)]">{error}</p>
-      </div>
-    );
-  }
+  }, []);
 
   return (
-    <section className="space-y-5">
-      <header className="hero-panel">
-        <div>
-          <p className="hero-kicker">Visual Workflow Builder</p>
-          <h2 className="hero-title">Compose branching automations on a live dataflow canvas.</h2>
-          <p className="hero-description">
-            Add connectors, wire dependencies, configure node payloads, and run workflows directly from the editor.
-          </p>
+    <div className="flex h-full flex-col">
+      {/* Toolbar */}
+      <header className="flex items-center justify-between border-b border-[var(--stroke-1)] bg-white px-5 py-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-[15px] font-semibold text-[var(--text-primary)]">{workflowName || "Untitled"}</h1>
+          {dirty && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-600">
+              Unsaved
+            </span>
+          )}
+          {notice && (
+            <span className="text-xs text-[var(--active)]">{notice}</span>
+          )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="ghost-btn" disabled={!selectedNode} onClick={() => selectedNode && removeNode(selectedNode.id)}>
-            <Trash2 className="h-4 w-4" />
-            Remove node
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="ghost-btn text-xs"
+            disabled={!selectedNode}
+            onClick={() => selectedNode && removeNode(selectedNode.id)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Remove
           </button>
-          <button type="button" className="ghost-btn" disabled={running} onClick={handleRun}>
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-            {running ? "Running..." : "Run now"}
+          <button type="button" className="ghost-btn text-xs">
+            <PlayCircle className="h-3.5 w-3.5" />
+            Run
           </button>
-          <button type="button" className="action-btn" disabled={saving || !dirty} onClick={handleSave}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving..." : dirty ? "Save workflow" : "Saved"}
+          <button type="button" className="action-btn text-xs" disabled={!dirty}>
+            <Save className="h-3.5 w-3.5" />
+            Save
           </button>
         </div>
       </header>
 
-      <div className="grid gap-4 xl:grid-cols-[310px_minmax(0,1fr)]">
-        <aside className="card space-y-4 p-4 md:p-5">
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar */}
+        <aside className="w-[260px] shrink-0 overflow-y-auto border-r border-[var(--stroke-1)] bg-white p-4">
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">Workflow metadata</h3>
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">
+              Workflow
+            </h3>
             <label className="field-label">
               Name
               <input
                 className="field-input"
                 value={workflowName}
-                onChange={(event) => {
-                  updateWorkflowMeta({ name: event.target.value });
-                }}
+                onChange={(e) => updateWorkflowMeta({ name: e.target.value })}
               />
             </label>
             <label className="field-label">
               Description
               <textarea
-                className="field-input min-h-24"
+                className="field-input min-h-16 text-sm"
                 value={workflowDescription}
-                onChange={(event) => {
-                  updateWorkflowMeta({ description: event.target.value });
-                }}
+                onChange={(e) => updateWorkflowMeta({ description: e.target.value })}
               />
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="metric-cell">
               <dt>Nodes</dt>
               <dd>{nodes.length}</dd>
@@ -265,15 +257,18 @@ export default function BuilderPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">Add connector</h3>
+          <div className="mt-5 space-y-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">
+              Add connector
+            </h3>
             {connectorGroups.map((group) => (
-              <div key={group.category} className="space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-subtle)]">{group.category}</p>
-                <div className="grid gap-2">
+              <div key={group.category} className="space-y-1.5">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-subtle)]">
+                  {group.category}
+                </p>
+                <div className="grid gap-1.5">
                   {group.items.map((connector) => {
                     const Icon = connectorIcon[connector.key] ?? Cable;
-
                     return (
                       <button
                         key={connector.key}
@@ -281,14 +276,15 @@ export default function BuilderPage() {
                         className="connector-add-btn"
                         onClick={() => {
                           addNodeFromConnector(connector);
-                          setNotice(`${connector.name} node added to canvas.`);
+                          setNotice(`${connector.name} added`);
+                          setTimeout(() => setNotice(null), 2000);
                         }}
                       >
                         <span className="inline-flex items-center gap-2">
-                          <Icon className="h-4 w-4" style={{ color: connector.accent }} />
-                          <span>{connector.name}</span>
+                          <Icon className="h-3.5 w-3.5" style={{ color: connector.accent }} />
+                          <span className="text-xs">{connector.name}</span>
                         </span>
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-3.5 w-3.5" />
                       </button>
                     );
                   })}
@@ -298,7 +294,8 @@ export default function BuilderPage() {
           </div>
         </aside>
 
-        <div className="card builder-canvas-wrap relative min-h-[680px] overflow-hidden">
+        {/* Canvas */}
+        <div className="relative flex-1 builder-canvas-wrap overflow-hidden">
           <Canvas
             nodes={nodes}
             edges={edges}
@@ -309,26 +306,12 @@ export default function BuilderPage() {
           />
           <NodeConfigPanel
             node={selectedNode}
-            onClose={() => {
-              selectNode(null);
-            }}
+            onClose={() => selectNode(null)}
             onUpdateBasics={updateNodeBasics}
             onUpdateConfig={updateNodeConfig}
           />
         </div>
       </div>
-
-      {(notice || error || lastSavedAt) && (
-        <div className="card p-4 text-sm">
-          {notice ? <p className="text-[var(--active)]">{notice}</p> : null}
-          {error ? <p className="text-[oklch(0.8_0.15_32)]">{error}</p> : null}
-          {lastSavedAt ? (
-            <p className={cn("text-xs text-[var(--text-subtle)]", (notice || error) && "mt-1")}>
-              Last saved: {new Date(lastSavedAt).toLocaleString()}
-            </p>
-          ) : null}
-        </div>
-      )}
-    </section>
+    </div>
   );
 }

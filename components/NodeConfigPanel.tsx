@@ -80,17 +80,9 @@ function normalizeConfigValue(input: string, type: ConfigFieldType) {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  if (input.trim() === "true") {
-    return true;
-  }
-
-  if (input.trim() === "false") {
-    return false;
-  }
-
-  if (input.trim() !== "" && !Number.isNaN(Number(input))) {
-    return Number(input);
-  }
+  if (input.trim() === "true") return true;
+  if (input.trim() === "false") return false;
+  if (input.trim() !== "" && !Number.isNaN(Number(input))) return Number(input);
 
   return input;
 }
@@ -109,20 +101,22 @@ export function NodeConfigPanel({ node, onClose, onUpdateBasics, onUpdateConfig 
     <aside className={`node-config-panel ${node ? "node-config-panel-open" : ""}`}>
       <header className="node-config-header">
         <div>
-          <p className="hero-kicker">Node Config</p>
-          <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">
+            Node Config
+          </p>
+          <h3 className="mt-0.5 text-[15px] font-semibold text-[var(--text-primary)]">
             {node ? node.data.label : "No node selected"}
           </h3>
         </div>
-        <button type="button" className="ghost-btn" onClick={onClose}>
-          <X className="h-4 w-4" />
+        <button type="button" className="ghost-btn text-xs" onClick={onClose}>
+          <X className="h-3.5 w-3.5" />
           Close
         </button>
       </header>
 
       {!node ? (
         <p className="text-sm text-[var(--text-muted)]">
-          Select a node on the canvas to edit label, description, and connector parameters.
+          Select a node on the canvas to edit its configuration.
         </p>
       ) : (
         <div className="node-config-body">
@@ -131,20 +125,16 @@ export function NodeConfigPanel({ node, onClose, onUpdateBasics, onUpdateConfig 
             <input
               className="field-input"
               value={node.data.label}
-              onChange={(event) => {
-                onUpdateBasics(node.id, { label: event.target.value });
-              }}
+              onChange={(e) => onUpdateBasics(node.id, { label: e.target.value })}
             />
           </label>
 
           <label className="field-label">
             Description
             <textarea
-              className="field-input min-h-20"
+              className="field-input min-h-16"
               value={node.data.description}
-              onChange={(event) => {
-                onUpdateBasics(node.id, { description: event.target.value });
-              }}
+              onChange={(e) => onUpdateBasics(node.id, { description: e.target.value })}
             />
           </label>
 
@@ -157,14 +147,12 @@ export function NodeConfigPanel({ node, onClose, onUpdateBasics, onUpdateConfig 
                 <label key={field.key} className="field-label">
                   {field.label}
                   <textarea
-                    className="field-input min-h-28 mono text-xs"
+                    className="field-input min-h-24 mono text-xs"
                     placeholder={field.placeholder}
                     value={value}
-                    onChange={(event) => {
-                      onUpdateConfig(node.id, field.key, event.target.value);
-                    }}
+                    onChange={(e) => onUpdateConfig(node.id, field.key, e.target.value)}
                   />
-                  {field.hint ? <small className="text-[10px] text-[var(--text-subtle)]">{field.hint}</small> : null}
+                  {field.hint && <small className="text-[10px] text-[var(--text-subtle)]">{field.hint}</small>}
                 </label>
               );
             }
@@ -176,9 +164,7 @@ export function NodeConfigPanel({ node, onClose, onUpdateBasics, onUpdateConfig 
                   <select
                     className="field-input"
                     value={value}
-                    onChange={(event) => {
-                      onUpdateConfig(node.id, field.key, event.target.value);
-                    }}
+                    onChange={(e) => onUpdateConfig(node.id, field.key, e.target.value)}
                   >
                     {(field.options ?? []).map((option) => (
                       <option key={option.value} value={option.value}>
@@ -198,9 +184,7 @@ export function NodeConfigPanel({ node, onClose, onUpdateBasics, onUpdateConfig 
                   className="field-input"
                   placeholder={field.placeholder}
                   value={value}
-                  onChange={(event) => {
-                    onUpdateConfig(node.id, field.key, normalizeConfigValue(event.target.value, field.type));
-                  }}
+                  onChange={(e) => onUpdateConfig(node.id, field.key, normalizeConfigValue(e.target.value, field.type))}
                 />
               </label>
             );

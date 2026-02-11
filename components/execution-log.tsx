@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { formatDistanceToNowStrict } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import type { WorkflowExecutionLog } from "@/lib/types";
@@ -12,15 +11,20 @@ type ExecutionLogProps = {
 };
 
 function rowTone(status: WorkflowExecutionLog["status"]) {
-  if (status === "success") {
-    return "terminal-success";
-  }
-
-  if (status === "running") {
-    return "terminal-running";
-  }
-
+  if (status === "success") return "terminal-success";
+  if (status === "running") return "terminal-running";
   return "terminal-fail";
+}
+
+function timeAgo(date: string): string {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export function ExecutionLog({ logs }: ExecutionLogProps) {
@@ -33,7 +37,7 @@ export function ExecutionLog({ logs }: ExecutionLogProps) {
 
   if (orderedLogs.length === 0) {
     return (
-      <div className="terminal-panel p-6 text-sm text-[var(--text-muted)]">
+      <div className="terminal-panel p-8 text-center text-sm text-[var(--text-muted)]">
         No runs found for the selected filters.
       </div>
     );
@@ -57,49 +61,52 @@ export function ExecutionLog({ logs }: ExecutionLogProps) {
 
             return (
               <Fragment key={log.id}>
-                <tr className={cn("terminal-row", rowTone(log.status))}>
+                <tr className={cn("terminal-row cursor-pointer hover:bg-[var(--surface-2)]", rowTone(log.status))}>
                   <td className="px-4 py-3">
                     <button
                       type="button"
                       className="inline-flex items-center gap-2 font-medium text-[var(--text-primary)]"
-                      onClick={() => {
-                        setExpanded((current) => (current === log.id ? null : log.id));
-                      }}
+                      onClick={() => setExpanded((c) => (c === log.id ? null : log.id))}
                     >
-                      {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      {log.id}
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                      <span className="mono text-xs">{log.id}</span>
                     </button>
                   </td>
                   <td className="px-4 py-3 text-[var(--text-muted)]">{log.workflowName}</td>
-                  <td className="px-4 py-3 uppercase tracking-[0.08em]">{log.status}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)]">{log.durationMs}ms</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)]">
-                    {formatDistanceToNowStrict(new Date(log.startedAt), { addSuffix: true })}
+                  <td className="px-4 py-3">
+                    <span className={cn("status-pill", log.status === "success" ? "pill-active" : log.status === "running" ? "pill-paused" : "pill-error")}>
+                      {log.status}
+                    </span>
                   </td>
+                  <td className="px-4 py-3 mono text-xs text-[var(--text-muted)]">{log.durationMs}ms</td>
+                  <td className="px-4 py-3 text-[var(--text-muted)]">{timeAgo(log.startedAt)}</td>
                 </tr>
                 {isOpen && (
                   <tr className="terminal-row-expanded">
-                    <td colSpan={5} className="px-4 pb-5 pt-2">
-                      <div className="space-y-3 rounded-xl border border-[var(--stroke-1)] bg-[oklch(0.2_0.02_276_/_0.92)] p-4">
+                    <td colSpan={5} className="px-4 pb-4 pt-2">
+                      <div className="space-y-2 rounded-lg border border-[var(--stroke-1)] bg-white p-4">
                         {log.steps.map((step) => (
                           <div key={`${log.id}-${step.nodeId}-${step.startedAt}`} className="step-row">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="font-medium text-[var(--text-primary)]">
-                                {step.nodeLabel} <span className="text-[var(--text-subtle)]">({step.connector})</span>
+                              <p className="text-sm font-medium text-[var(--text-primary)]">
+                                {step.nodeLabel}
+                                <span className="ml-2 text-xs text-[var(--text-subtle)]">({step.connector})</span>
                               </p>
-                              <span className={cn("status-pill", step.status === "success" ? "pill-active" : "pill-error")}>
+                              <span className={cn("status-pill text-[10px]", step.status === "success" ? "pill-active" : "pill-error")}>
                                 {step.status}
                               </span>
                             </div>
-                            <p className="mt-2 text-xs text-[var(--text-subtle)]">
-                              {step.durationMs}ms · {new Date(step.startedAt).toLocaleString()}
+                            <p className="mt-1 text-[11px] text-[var(--text-subtle)]">
+                              {step.durationMs}ms
                             </p>
-                            <pre className="mono mt-2 overflow-x-auto rounded-lg border border-[var(--stroke-1)] bg-[oklch(0.18_0.02_273_/_0.96)] p-3 text-xs text-[var(--text-muted)]">
-                              {JSON.stringify(step.output, null, 2)}
-                            </pre>
-                            {step.error ? (
-                              <p className="mt-2 text-xs text-[oklch(0.8_0.15_32)]">{step.error}</p>
-                            ) : null}
+                            {Object.keys(step.output).length > 0 && (
+                              <pre className="mono mt-1.5 overflow-x-auto rounded-md border border-[var(--stroke-1)] bg-[var(--surface-2)] p-2.5 text-[11px] text-[var(--text-muted)]">
+                                {JSON.stringify(step.output, null, 2)}
+                              </pre>
+                            )}
+                            {step.error && (
+                              <p className="mt-1.5 text-xs text-[var(--danger)]">{step.error}</p>
+                            )}
                           </div>
                         ))}
                       </div>

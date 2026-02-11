@@ -32,23 +32,11 @@ const nodeTypes: NodeTypes = {
 };
 
 function nodeTint(type: NodeCategory) {
-  if (type === "trigger") {
-    return "oklch(0.73 0.17 232)";
-  }
-
-  if (type === "action") {
-    return "oklch(0.75 0.16 28)";
-  }
-
-  if (type === "condition") {
-    return "oklch(0.72 0.17 80)";
-  }
-
-  if (type === "transform") {
-    return "oklch(0.77 0.16 263)";
-  }
-
-  return "oklch(0.7 0.08 260)";
+  if (type === "trigger") return "#3b82f6";
+  if (type === "action") return "#f97316";
+  if (type === "condition") return "#eab308";
+  if (type === "transform") return "#8b5cf6";
+  return "#6b7280";
 }
 
 type CanvasProps = {
@@ -89,10 +77,10 @@ function CanvasInner({ nodes, edges, onNodesChange, onEdgesChange, onConnect, on
     >
       <Background
         id="grid"
-        gap={24}
-        size={1.4}
-        color="oklch(0.42 0.05 280 / 0.42)"
-        style={{ backgroundColor: "oklch(0.15 0.03 292 / 0.8)" }}
+        gap={20}
+        size={1}
+        color="#d1d5db"
+        style={{ backgroundColor: "#f3f4f6" }}
       />
       <MiniMap
         className="builder-minimap"

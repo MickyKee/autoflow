@@ -28,41 +28,17 @@ const iconByConnector: Record<ConnectorKey, LucideIcon> = {
   delay: Clock3,
 };
 
-function connectorColor(connector: ConnectorKey) {
-  if (connector === "webhook") {
-    return "oklch(0.73 0.17 232)";
-  }
-
-  if (connector === "schedule") {
-    return "oklch(0.74 0.14 102)";
-  }
-
-  if (connector === "http_request") {
-    return "oklch(0.76 0.13 250)";
-  }
-
-  if (connector === "openai") {
-    return "oklch(0.78 0.13 178)";
-  }
-
-  if (connector === "email") {
-    return "oklch(0.75 0.16 28)";
-  }
-
-  if (connector === "slack") {
-    return "oklch(0.71 0.2 316)";
-  }
-
-  if (connector === "condition") {
-    return "oklch(0.72 0.17 80)";
-  }
-
-  if (connector === "transform") {
-    return "oklch(0.77 0.16 263)";
-  }
-
-  return "oklch(0.7 0.08 260)";
-}
+const connectorColors: Record<ConnectorKey, string> = {
+  webhook: "#3b82f6",
+  schedule: "#3b82f6",
+  http_request: "#f97316",
+  openai: "#10b981",
+  email: "#f97316",
+  slack: "#e11d48",
+  condition: "#eab308",
+  transform: "#8b5cf6",
+  delay: "#6b7280",
+};
 
 export function NodeChrome({
   connector,
@@ -78,11 +54,12 @@ export function NodeChrome({
   className?: string;
 }) {
   const Icon = iconByConnector[connector];
+  const color = connectorColors[connector];
 
   return (
     <article className={cn("rf-node-shell", className)}>
       <header className="rf-node-head">
-        <span className="rf-node-badge" style={{ color: connectorColor(connector) }}>
+        <span className="rf-node-badge" style={{ color }}>
           <Icon className="h-3.5 w-3.5" />
           {categoryLabel}
         </span>
