@@ -104,11 +104,25 @@
 - Commit: `fix: harden autoflow execution and edge case handling`
 
 ### Phase 6 — Test + Visual Verification + Docs
+- Status: ✅ Done (2026-02-11)
 - Run and pass: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:run`.
 - Visual verification with `agent-browser` CLI across all affected pages and flows.
 - Save screenshots to `autoflow/tmp/`.
 - Final README update with architecture diagram and setup.
 - Update this EXECPLAN with completed timestamps.
+- Visual verification artifacts:
+  - `tmp/verify-home.png`
+  - `tmp/verify-home-run.png`
+  - `tmp/verify-connectors.png`
+  - `tmp/verify-logs-expanded.png`
+  - `tmp/verify-settings-save.png`
+  - `tmp/verify-builder-initial.png`
+  - `tmp/verify-builder-selected-panel.png`
+  - `tmp/verify-builder-saved.png`
+  - `tmp/verify-builder-ran.png`
+  - `tmp/verify-logs-after-builder-run.png`
+  - `tmp/verify-home-mobile.png`
+  - `tmp/verify-builder-mobile.png`
 - Commit: `docs: finalize readme verification evidence and execution plan status`
 
 ## 4) Verification Matrix
@@ -120,13 +134,13 @@
 
 ## 5) Completion Checklist (will be marked true only when verified)
 
-- [ ] EXECPLAN exists and all phases marked done
-- [ ] `pnpm lint` zero warnings
-- [ ] `pnpm typecheck` zero errors
-- [ ] `pnpm build` succeeds
-- [ ] `pnpm test:run` all pass
-- [ ] Break-it defects fixed
-- [ ] Visual verification complete with screenshots in `autoflow/tmp/`
-- [ ] New code covered by tests
-- [ ] No TODO/FIXME in new code
-- [ ] PR quality bar met without hesitation
+- [x] EXECPLAN exists and all phases marked done
+- [x] `pnpm lint` zero warnings
+- [x] `pnpm typecheck` zero errors
+- [x] `pnpm build` succeeds
+- [x] `pnpm test:run` all pass
+- [x] Break-it defects fixed
+- [x] Visual verification complete with screenshots in `autoflow/tmp/`
+- [x] New code covered by tests
+- [x] No TODO/FIXME in new code
+- [x] PR quality bar met without hesitation
