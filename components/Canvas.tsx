@@ -76,9 +76,6 @@ function CanvasInner({ nodes, edges, onNodesChange, onEdgesChange, onConnect, on
       onPaneClick={() => {
         onSelectNode(null);
       }}
-      onSelectionChange={({ nodes: selected }) => {
-        onSelectNode(selected[0]?.id ?? null);
-      }}
       fitView
       minZoom={0.3}
       maxZoom={1.6}

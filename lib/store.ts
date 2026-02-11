@@ -267,6 +267,14 @@ function makeEdge(connection: Connection): FlowEdge | null {
   };
 }
 
+function hasNodeGraphMutation(changes: NodeChange<FlowNode>[]) {
+  return changes.some((change) => change.type !== "select" && change.type !== "dimensions");
+}
+
+function hasEdgeGraphMutation(changes: EdgeChange<FlowEdge>[]) {
+  return changes.some((change) => change.type !== "select");
+}
+
 export const useBuilderStore = create<BuilderStore>((set, get) => ({
   ...createInitialBuilderState(),
 
@@ -286,13 +294,13 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
   setNodesFromChanges: (changes) =>
     set((state) => ({
       nodes: applyNodeChanges(changes, state.nodes),
-      dirty: true,
+      dirty: state.dirty || hasNodeGraphMutation(changes),
     })),
 
   setEdgesFromChanges: (changes) =>
     set((state) => ({
       edges: applyEdgeChanges(changes, state.edges),
-      dirty: true,
+      dirty: state.dirty || hasEdgeGraphMutation(changes),
     })),
 
   connect: (connection) =>
@@ -300,6 +308,18 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       const edge = makeEdge(connection);
 
       if (!edge) {
+        return state;
+      }
+
+      const duplicate = state.edges.some(
+        (existing) =>
+          existing.source === edge.source &&
+          existing.target === edge.target &&
+          (existing.sourceHandle ?? null) === (edge.sourceHandle ?? null) &&
+          (existing.targetHandle ?? null) === (edge.targetHandle ?? null),
+      );
+
+      if (duplicate) {
         return state;
       }
 
@@ -315,7 +335,14 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       dirty: true,
     })),
 
-  selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
+  selectNode: (nodeId) =>
+    set((state) => {
+      if (state.selectedNodeId === nodeId) {
+        return state;
+      }
+
+      return { selectedNodeId: nodeId };
+    }),
 
   updateWorkflowMeta: (input) =>
     set((state) => ({
@@ -325,48 +352,80 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
     })),
 
   updateNodeBasics: (nodeId, input) =>
-    set((state) => ({
-      nodes: state.nodes.map((node) =>
-        node.id === nodeId
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                label: input.label ?? node.data.label,
-                description: input.description ?? node.data.description,
-              },
-            }
-          : node,
-      ),
-      dirty: true,
-    })),
+    set((state) => {
+      let changed = false;
+
+      const nodes = state.nodes.map((node) => {
+        if (node.id !== nodeId) {
+          return node;
+        }
+
+        changed = true;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            label: input.label ?? node.data.label,
+            description: input.description ?? node.data.description,
+          },
+        };
+      });
+
+      if (!changed) {
+        return state;
+      }
+
+      return {
+        nodes,
+        dirty: true,
+      };
+    }),
 
   updateNodeConfig: (nodeId, key, value) =>
-    set((state) => ({
-      nodes: state.nodes.map((node) =>
-        node.id === nodeId
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                config: {
-                  ...node.data.config,
-                  [key]: value,
-                },
-              },
-            }
-          : node,
-      ),
-      dirty: true,
-    })),
+    set((state) => {
+      let changed = false;
+
+      const nodes = state.nodes.map((node) => {
+        if (node.id !== nodeId) {
+          return node;
+        }
+
+        changed = true;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            config: {
+              ...node.data.config,
+              [key]: value,
+            },
+          },
+        };
+      });
+
+      if (!changed) {
+        return state;
+      }
+
+      return {
+        nodes,
+        dirty: true,
+      };
+    }),
 
   removeNode: (nodeId) =>
-    set((state) => ({
-      nodes: state.nodes.filter((node) => node.id !== nodeId),
-      edges: state.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
-      selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
-      dirty: true,
-    })),
+    set((state) => {
+      if (!state.nodes.some((node) => node.id === nodeId)) {
+        return state;
+      }
+
+      return {
+        nodes: state.nodes.filter((node) => node.id !== nodeId),
+        edges: state.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
+        selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+        dirty: true,
+      };
+    }),
 
   serializeGraph: () => {
     const { nodes, edges } = get();

@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import { executeWorkflow } from "../../lib/engine";
 import { runMigrations } from "./db";
 import { publishLog, subscribeLogs } from "./events";
+import { validateWorkflowGraph } from "./graph-validation";
 import {
   createExecutionLog,
   createWorkflow,
@@ -55,6 +56,18 @@ app.get("/api/workflows/:id", (req, res) => {
 app.post("/api/workflows", (req, res, next) => {
   try {
     const payload = workflowCreateSchema.parse(req.body);
+    const graphErrors = validateWorkflowGraph({
+      nodes: payload.nodes,
+      edges: payload.edges,
+    });
+
+    if (graphErrors.length > 0) {
+      return res.status(400).json({
+        error: "Workflow graph validation failed.",
+        details: graphErrors,
+      });
+    }
+
     const workflow = createWorkflow(payload);
     return res.status(201).json({ workflow });
   } catch (error) {
@@ -65,6 +78,26 @@ app.post("/api/workflows", (req, res, next) => {
 app.put("/api/workflows/:id", (req, res, next) => {
   try {
     const payload = workflowUpdateSchema.parse(req.body);
+    const existing = getWorkflowById(req.params.id);
+
+    if (!existing) {
+      return res.status(404).json({ error: "Workflow not found." });
+    }
+
+    if (payload.nodes || payload.edges) {
+      const graphErrors = validateWorkflowGraph({
+        nodes: payload.nodes ?? existing.nodes,
+        edges: payload.edges ?? existing.edges,
+      });
+
+      if (graphErrors.length > 0) {
+        return res.status(400).json({
+          error: "Workflow graph validation failed.",
+          details: graphErrors,
+        });
+      }
+    }
+
     const workflow = updateWorkflow(req.params.id, payload);
 
     if (!workflow) {

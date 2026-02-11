@@ -38,16 +38,16 @@ const workflowEdgeSchema = z.object({
 export const workflowCreateSchema = z.object({
   name: z.string().min(3).max(80),
   description: z.string().min(8).max(300),
-  nodes: z.array(workflowNodeSchema),
-  edges: z.array(workflowEdgeSchema),
+  nodes: z.array(workflowNodeSchema).min(1).max(200),
+  edges: z.array(workflowEdgeSchema).max(400),
 });
 
 export const workflowUpdateSchema = z.object({
   name: z.string().min(3).max(80).optional(),
   description: z.string().min(8).max(300).optional(),
   status: z.enum(["active", "paused", "error"]).optional(),
-  nodes: z.array(workflowNodeSchema).optional(),
-  edges: z.array(workflowEdgeSchema).optional(),
+  nodes: z.array(workflowNodeSchema).min(1).max(200).optional(),
+  edges: z.array(workflowEdgeSchema).max(400).optional(),
 });
 
 export const logsFilterSchema = z.object({

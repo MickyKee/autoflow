@@ -110,4 +110,31 @@ describe("useBuilderStore", () => {
     expect(state.edges).toHaveLength(0);
     expect(state.dirty).toBe(true);
   });
+
+  it("does not mark dirty for selection-only edge changes", () => {
+    resetBuilderStore();
+    const workflow = sampleWorkflow();
+    useBuilderStore.getState().initialize(workflow);
+
+    useBuilderStore.getState().setEdgesFromChanges([
+      { id: "edge_start_output", type: "select", selected: true },
+    ]);
+
+    expect(useBuilderStore.getState().dirty).toBe(false);
+  });
+
+  it("prevents duplicate edges when connecting the same handles", () => {
+    resetBuilderStore();
+    const workflow = sampleWorkflow();
+    useBuilderStore.getState().initialize(workflow);
+
+    useBuilderStore.getState().connect({
+      source: "node_start",
+      target: "node_output",
+      sourceHandle: null,
+      targetHandle: null,
+    });
+
+    expect(useBuilderStore.getState().edges).toHaveLength(1);
+  });
 });

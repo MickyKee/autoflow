@@ -93,9 +93,14 @@
 - Commit: `feat: ship visual workflow builder with configurable nodes`
 
 ### Phase 5 — Hardening + Self Review + Break-it
+- Status: ✅ Done (2026-02-11)
 - Security pass (input validation, transform sandbox, payload limits, CORS defaults).
 - Break-it scenarios (invalid configs, nulls, race/concurrency, bad filters, malformed graph).
 - Fix all discovered defects immediately.
+- Break-it defects fixed:
+  - Backend now rejects malformed graph payloads (missing node references, duplicate IDs, invalid condition handles, self-loops).
+  - Builder selection loop bug fixed (`Maximum update depth exceeded`) by guarding no-op selection updates.
+  - Builder now blocks duplicate connections and avoids false "dirty" state from selection-only graph events.
 - Commit: `fix: harden autoflow execution and edge case handling`
 
 ### Phase 6 — Test + Visual Verification + Docs

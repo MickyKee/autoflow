@@ -62,6 +62,45 @@ describe("workflow endpoints", () => {
     expect(response.body.error).toBe("Invalid request payload.");
   });
 
+  it("rejects graph payloads with missing edge targets", async () => {
+    const response = await request(app).post("/api/workflows").send({
+      name: "Broken Graph Workflow",
+      description: "Workflow with edges referencing nodes that do not exist.",
+      nodes: [sampleNode],
+      edges: [{ id: "edge-missing-target", source: "sample-node", target: "missing-node" }],
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Workflow graph validation failed.");
+    expect(response.body.details[0]).toContain("missing target node");
+  });
+
+  it("rejects update payloads with duplicate node IDs", async () => {
+    const createResponse = await request(app).post("/api/workflows").send({
+      name: "Graph Validation Update",
+      description: "Workflow used to test update graph validation edge cases.",
+      nodes: [sampleNode],
+      edges: [],
+    });
+    const workflowId = createResponse.body.workflow.id as string;
+
+    const updateResponse = await request(app)
+      .put(`/api/workflows/${workflowId}`)
+      .send({
+        nodes: [
+          sampleNode,
+          {
+            ...sampleNode,
+          },
+        ],
+        edges: [],
+      });
+
+    expect(updateResponse.status).toBe(400);
+    expect(updateResponse.body.error).toBe("Workflow graph validation failed.");
+    expect(updateResponse.body.details[0]).toContain("duplicate node IDs");
+  });
+
   it("runs a workflow and writes a log", async () => {
     const createResponse = await request(app).post("/api/workflows").send({
       name: "Runnable Workflow",
