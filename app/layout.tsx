@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Sora } from "next/font/google";
 
+import { AppChrome } from "@/components/app-chrome";
+
 import "./globals.css";
 
 const sora = Sora({
@@ -25,7 +27,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${sora.variable} ${jetbrainsMono.variable}`}>{children}</body>
+      <body className={`${sora.variable} ${jetbrainsMono.variable}`}>
+        <AppChrome>{children}</AppChrome>
+      </body>
     </html>
   );
 }

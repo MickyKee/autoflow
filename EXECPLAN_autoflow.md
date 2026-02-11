@@ -74,7 +74,7 @@
 - Commit: `feat: add workflow engine and connector execution modules`
 
 ### Phase 3 — Frontend App Shell + Core Pages
-- Status: ⏳ In progress
+- Status: ✅ Done (2026-02-11)
 - Implement App Router pages:
   - `/` workflow list
   - `/logs`
@@ -85,6 +85,7 @@
 - Commit: `feat: build workflow list logs connectors and settings pages`
 
 ### Phase 4 — Visual Builder (React Flow)
+- Status: ⏳ In progress
 - Implement `/builder/[id]` with animated canvas, custom nodes, edge styles, add/connect/configure flows.
 - Build `Canvas`, `NodeConfigPanel`, and custom node components.
 - Persist workflow graph edits to backend.
