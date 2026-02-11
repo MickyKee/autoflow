@@ -1,119 +1,84 @@
-# AutoFlow
+# ⚡ AutoFlow
 
-AutoFlow is a visual workflow automation builder built as a portfolio-grade "mini Zapier/n8n" app. It includes a neon-themed React Flow canvas, a SQLite-backed execution API, realtime execution logs, and configurable connector settings.
+Visual workflow automation builder — design, connect, and execute multi-step automations with a drag-and-drop canvas.
 
-## Highlights
+![AutoFlow Dashboard](./screenshot.png)
 
-- Visual workflow canvas with custom node types:
-  - Trigger
-  - Action
-  - Condition (true/false branches)
-  - Transform
-  - Output/Delay
-- Connectors:
-  - Webhook
-  - Schedule/Cron
-  - HTTP Request
-  - OpenAI
-  - Email (SMTP)
-  - Slack
-  - Condition
-  - Transform
-  - Delay
-- Realtime log streaming via Server-Sent Events (`/api/logs/stream`)
-- SQLite persistence for workflows, logs, connector metadata, and settings
-- Typed API contracts + strict request validation
+## Features
+
+- **Visual workflow canvas** with custom node types: Trigger, Action, Condition (branching), Transform, Output/Delay
+- **8 built-in connectors**: Webhook, Schedule/Cron, HTTP Request, OpenAI, Email (SMTP), Slack, Condition, Transform
+- **Real-time execution logs** via Server-Sent Events — watch workflows run step by step
+- **SQLite persistence** for workflows, logs, connector metadata, and settings
+- **Multi-page dashboard**: Workflow list, visual builder, execution logs, connectors, settings
+- **Typed API contracts** + Zod request validation
+
+## Tech Stack
+
+![Next.js](https://img.shields.io/badge/Next.js-14-111111?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06b6d4?logo=tailwindcss&logoColor=white)
+![React Flow](https://img.shields.io/badge/React_Flow-Canvas-ff0072)
+![SQLite](https://img.shields.io/badge/SQLite-Database-003b57?logo=sqlite)
+![Express](https://img.shields.io/badge/Express-API-000000?logo=express)
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  UI[Next.js App Router UI] -->|REST| API[Express API]
-  UI -->|SSE /api/logs/stream| API
-  API --> ENGINE[Workflow Engine]
-  ENGINE --> CONNECTORS[Connector Adapters]
-  API --> DB[(SQLite)]
-  CONNECTORS --> EXT[External APIs\n(OpenAI/SMTP/Slack/HTTP)]
+```
+[Next.js App Router UI]
+          |
+          | REST + SSE (/api/logs/stream)
+          v
+[Express API Server]
+  |            |
+  v            v
+[SQLite]   [Workflow Engine]
+               |
+               v
+        [Connector Adapters]
+               |
+               v
+  [External APIs: OpenAI, SMTP, Slack, HTTP]
 ```
 
 ## Project Structure
 
-```txt
+```
 autoflow/
-├── app/
-│   ├── page.tsx                 # Workflow list
-│   ├── builder/[id]/page.tsx    # Visual builder
+├── app/                         # Next.js pages
+│   ├── page.tsx                 # Workflow list + stats
+│   ├── builder/[id]/page.tsx    # Visual drag-and-drop builder
 │   ├── logs/page.tsx            # Execution logs
 │   ├── connectors/page.tsx      # Connector library
-│   └── settings/page.tsx        # Runtime settings / secrets
-├── backend/src/
-│   ├── index.ts                 # API server
+│   └── settings/page.tsx        # Runtime settings
+├── backend/src/                 # API server
+│   ├── index.ts                 # Express server
 │   ├── repository.ts            # SQLite data layer
-│   ├── graph-validation.ts      # Graph hardening rules
-│   └── schemas.ts               # Zod request validation
-├── components/
-│   ├── Canvas.tsx
-│   ├── NodeConfigPanel.tsx
-│   └── nodes/                   # React Flow custom nodes
-├── lib/
-│   ├── engine.ts                # Workflow executor
-│   ├── connectors/              # Connector implementations
-│   └── store.ts                 # Builder state management
-└── tests/
-    ├── workflows-api.test.ts
-    ├── settings-api.test.ts
-    ├── engine.test.ts
-    └── builder-store.test.ts
+│   └── schemas.ts               # Zod validation
+├── components/                  # React components
+│   ├── Canvas.tsx               # React Flow canvas
+│   └── nodes/                   # Custom node types
+└── lib/
+    ├── engine.ts                # Workflow executor
+    └── connectors/              # Connector implementations
 ```
 
-## Local Setup
+## Quick Start
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Services:
+- Frontend: http://localhost:3000
+- API: http://localhost:4000
+- Health: http://localhost:4000/health
 
-- Frontend: `http://localhost:3000` (or next available port)
-- API: `http://localhost:4000`
-- Health: `http://localhost:4000/health`
+## Environment Variables
 
-Optional environment variables:
-
-- `NEXT_PUBLIC_API_BASE_URL` (defaults to `http://localhost:4000`)
-- `API_PORT` (defaults to `4000`)
-- `DATABASE_URL` (SQLite path; defaults to `backend/data/autoflow.db`)
-
-## Quality Gates
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm build
-pnpm test:run
-```
-
-## Visual Verification Evidence
-
-Screenshots captured with `agent-browser` are saved under `tmp/` (gitignored), including:
-
-- `tmp/verify-home.png`
-- `tmp/verify-home-run.png`
-- `tmp/verify-connectors.png`
-- `tmp/verify-logs-expanded.png`
-- `tmp/verify-settings-save.png`
-- `tmp/verify-builder-initial.png`
-- `tmp/verify-builder-selected-panel.png`
-- `tmp/verify-builder-saved.png`
-- `tmp/verify-builder-ran.png`
-- `tmp/verify-home-mobile.png`
-- `tmp/verify-builder-mobile.png`
-
-## Notes
-
-- Secrets are masked on read in settings responses.
-- This project is designed for local/portfolio use; production secret encryption and distributed execution workers are out of scope for this version.
+- `NEXT_PUBLIC_API_BASE_URL` — API URL (default: `http://localhost:4000`)
+- `API_PORT` — API port (default: `4000`)
+- `DATABASE_URL` — SQLite path (default: `backend/data/autoflow.db`)
 
 ## License
 
