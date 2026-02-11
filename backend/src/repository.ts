@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type {
   AppSettings,
+  AppSettingsView,
   ConnectorDefinition,
   WorkflowExecutionLog,
   WorkflowRecord,
@@ -439,7 +440,7 @@ export function createExecutionLog(log: WorkflowExecutionLog) {
   });
 }
 
-export function getSettings() {
+export function getSettings(): AppSettingsView {
   const row = db
     .prepare(
       `SELECT openai_api_key, smtp_host, smtp_user, smtp_password, slack_webhook_url, execution_concurrency, run_alerts

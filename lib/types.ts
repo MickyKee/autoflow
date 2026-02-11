@@ -93,3 +93,14 @@ export type AppSettings = {
   executionConcurrency: number;
   runAlerts: boolean;
 };
+
+export type AppSettingsView = Omit<AppSettings, "openaiApiKey" | "smtpPassword" | "slackWebhookUrl"> & {
+  openaiApiKey: string;
+  smtpPassword: string;
+  slackWebhookUrl: string;
+  hasOpenaiApiKey: boolean;
+  hasSmtpPassword: boolean;
+  hasSlackWebhookUrl: boolean;
+};
+
+export type WorkflowTriggerType = "manual" | "webhook" | "schedule";

@@ -2,13 +2,14 @@ import cors from "cors";
 import express from "express";
 import { ZodError } from "zod";
 
+import { executeWorkflow } from "../../lib/engine";
 import { runMigrations } from "./db";
 import { publishLog, subscribeLogs } from "./events";
-import { createMockExecutionLog } from "./mock-runner";
 import {
   createExecutionLog,
   createWorkflow,
   getSettings,
+  getSecretSettings,
   getWorkflowById,
   listConnectors,
   listLogs,
@@ -85,12 +86,21 @@ app.post("/api/workflows/:id/run", (req, res, next) => {
     }
 
     const payload = runWorkflowSchema.parse(req.body ?? {});
-    const log = createMockExecutionLog(workflow, payload.triggerType, payload.payload);
+    const settings = getSecretSettings();
 
-    createExecutionLog(log);
-    publishLog(log);
-
-    return res.status(201).json({ run: log });
+    executeWorkflow({
+      workflow,
+      settings,
+      triggerType: payload.triggerType,
+      payload: payload.payload,
+    })
+      .then((run) => {
+        createExecutionLog(run);
+        publishLog(run);
+        res.status(201).json({ run });
+      })
+      .catch(next);
+    return undefined;
   } catch (error) {
     return next(error);
   }
@@ -109,12 +119,21 @@ app.post("/api/webhooks/:workflowId", (req, res, next) => {
       payload: req.body && typeof req.body === "object" ? req.body : {},
     });
 
-    const log = createMockExecutionLog(workflow, payload.triggerType, payload.payload);
+    const settings = getSecretSettings();
 
-    createExecutionLog(log);
-    publishLog(log);
-
-    return res.status(202).json({ accepted: true, runId: log.id });
+    executeWorkflow({
+      workflow,
+      settings,
+      triggerType: payload.triggerType,
+      payload: payload.payload,
+    })
+      .then((run) => {
+        createExecutionLog(run);
+        publishLog(run);
+        res.status(202).json({ accepted: true, runId: run.id });
+      })
+      .catch(next);
+    return undefined;
   } catch (error) {
     return next(error);
   }

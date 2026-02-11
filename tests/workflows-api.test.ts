@@ -63,21 +63,43 @@ describe("workflow endpoints", () => {
   });
 
   it("runs a workflow and writes a log", async () => {
-    const listResponse = await request(app).get("/api/workflows");
-    const firstWorkflowId = listResponse.body.workflows[0].id as string;
+    const createResponse = await request(app).post("/api/workflows").send({
+      name: "Runnable Workflow",
+      description: "Workflow used to validate run endpoint and log persistence.",
+      nodes: [
+        sampleNode,
+        {
+          id: "delay-node",
+          type: "output",
+          position: { x: 200, y: 120 },
+          data: {
+            label: "Output",
+            description: "Finish execution",
+            connector: "delay",
+            category: "output",
+            config: {
+              seconds: 0,
+            },
+          },
+        },
+      ],
+      edges: [{ id: "edge-a", source: "sample-node", target: "delay-node" }],
+    });
+    const workflowId = createResponse.body.workflow.id as string;
 
     const runResponse = await request(app)
-      .post(`/api/workflows/${firstWorkflowId}/run`)
+      .post(`/api/workflows/${workflowId}/run`)
       .send({
         triggerType: "manual",
         payload: { test: true, email: "qa@example.com" },
       });
 
     expect(runResponse.status).toBe(201);
-    expect(runResponse.body.run.workflowId).toBe(firstWorkflowId);
+    expect(runResponse.body.run.workflowId).toBe(workflowId);
     expect(runResponse.body.run.steps.length).toBeGreaterThan(0);
+    expect(runResponse.body.run.status).toBe("success");
 
-    const logsResponse = await request(app).get("/api/logs").query({ workflowId: firstWorkflowId, limit: 20 });
+    const logsResponse = await request(app).get("/api/logs").query({ workflowId, limit: 20 });
     expect(logsResponse.status).toBe(200);
     expect(logsResponse.body.logs.some((log: { id: string }) => log.id === runResponse.body.run.id)).toBe(true);
   });

@@ -66,7 +66,7 @@
 - Commit: `feat: implement backend api sqlite persistence and realtime logs`
 
 ### Phase 2 — Execution Engine + Connector Adapters
-- Status: ⏳ In progress
+- Status: ✅ Done (2026-02-11)
 - Implement engine graph traversal, condition branching, transform, delay.
 - Implement connector modules (webhook/http/openai/email/slack/schedule mock-ready).
 - Add robust error propagation and structured step logs.
@@ -74,6 +74,7 @@
 - Commit: `feat: add workflow engine and connector execution modules`
 
 ### Phase 3 — Frontend App Shell + Core Pages
+- Status: ⏳ In progress
 - Implement App Router pages:
   - `/` workflow list
   - `/logs`
